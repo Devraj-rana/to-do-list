@@ -21,10 +21,19 @@ type TaskItemProps = {
   onUpdateTask: (id: string, newDescription: string, newDueDate?: Date) => void;
 };
 
+function formatTime(date: Date) {
+  // Check if time is set to midnight, which we treat as no time specified
+  if (date.getHours() === 0 && date.getMinutes() === 0) {
+    return format(date, "MMM d, yyyy");
+  }
+  return format(date, "MMM d, yyyy 'at' h:mm a");
+}
+
 const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTask, onUpdateTask }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedDescription, setEditedDescription] = useState(task.description);
   const [editedDueDate, setEditedDueDate] = useState<Date | undefined>(task.dueDate ? new Date(task.dueDate) : undefined);
+  const [editedDueTime, setEditedDueTime] = useState<string>(task.dueDate ? format(new Date(task.dueDate), 'HH:mm') : '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,7 +46,15 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTas
   
   const handleUpdate = () => {
     if (editedDescription.trim()) {
-      onUpdateTask(task.id, editedDescription, editedDueDate);
+      let combinedDate: Date | undefined = undefined;
+      if (editedDueDate) {
+        combinedDate = new Date(editedDueDate);
+        if (editedDueTime) {
+          const [hours, minutes] = editedDueTime.split(':').map(Number);
+          combinedDate.setHours(hours, minutes);
+        }
+      }
+      onUpdateTask(task.id, editedDescription, combinedDate);
       setIsEditing(false);
     }
   };
@@ -45,6 +62,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTas
   const handleCancelEdit = () => {
     setEditedDescription(task.description);
     setEditedDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+    setEditedDueTime(task.dueDate ? format(new Date(task.dueDate), 'HH:mm') : '');
     setIsEditing(false);
   }
 
@@ -77,6 +95,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTas
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             {isEditing ? (
+              <div className="flex gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
                       <Button variant="outline" size="sm" className="h-7 text-xs">
@@ -88,16 +107,27 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTas
                     <Calendar
                       mode="single"
                       selected={editedDueDate}
-                      onSelect={setEditedDueDate}
+                      onSelect={(date) => {
+                        setEditedDueDate(date);
+                        if(!date) setEditedDueTime('');
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
                 </Popover>
+                <Input
+                  type="time"
+                  value={editedDueTime}
+                  onChange={e => setEditedDueTime(e.target.value)}
+                  disabled={!editedDueDate}
+                  className="h-7 text-xs w-[100px]"
+                />
+              </div>
             ) : (
               task.dueDate && (
                 <div className="flex items-center gap-1.5">
                   <CalendarIcon className="h-3 w-3" />
-                  <span>{format(new Date(task.dueDate), "MMM d, yyyy")}</span>
+                  <span>{formatTime(new Date(task.dueDate))}</span>
                 </div>
               )
             )}

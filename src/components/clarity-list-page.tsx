@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -7,6 +6,7 @@ import { estimateTaskCompletionTime } from '@/ai/flows/estimate-task-completion-
 import { warnOverloadedSchedule } from '@/ai/flows/warn-overloaded-schedule';
 import { useToast } from '@/hooks/use-toast';
 import { useHasMounted } from '@/hooks/use-has-mounted';
+import { format } from 'date-fns';
 
 import AddTaskForm from './add-task-form';
 import TaskList from './task-list';
@@ -47,6 +47,11 @@ const ClarityListPage: React.FC = () => {
       if (a.completed !== b.completed) {
         return a.completed ? 1 : -1;
       }
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [tasks]);
@@ -71,7 +76,7 @@ const ClarityListPage: React.FC = () => {
         description,
         completed: false,
         createdAt: new Date().toISOString(),
-        dueDate: dueDate ? dueDate.toISOString().split('T')[0] : undefined,
+        dueDate: dueDate ? dueDate.toISOString() : undefined,
         estimatedTime: estimatedCompletionTimeMinutes,
       };
 
@@ -84,13 +89,15 @@ const ClarityListPage: React.FC = () => {
       });
 
       if (newTask.dueDate) {
-        const tasksForDueDate = updatedTasks.filter(t => t.dueDate === newTask.dueDate);
+        const dueDateString = format(new Date(newTask.dueDate), 'yyyy-MM-dd');
+        const tasksForDueDate = updatedTasks.filter(t => t.dueDate && format(new Date(t.dueDate), 'yyyy-MM-dd') === dueDateString);
+        
         const historicalCompletionTimes = tasks
           .filter(t => t.completed && t.completionTimeMinutes)
           .map(t => t.completionTimeMinutes!);
 
         const { isOverloaded, warningMessage } = await warnOverloadedSchedule({
-          tasks: tasksForDueDate.map(t => ({ description: t.description, dueDate: t.dueDate! })),
+          tasks: tasksForDueDate.map(t => ({ description: t.description, dueDate: format(new Date(t.dueDate!), 'yyyy-MM-dd') })),
           historicalCompletionTimes,
         });
 
@@ -114,7 +121,7 @@ const ClarityListPage: React.FC = () => {
         description,
         completed: false,
         createdAt: new Date().toISOString(),
-        dueDate: dueDate ? dueDate.toISOString().split('T')[0] : undefined,
+        dueDate: dueDate ? dueDate.toISOString() : undefined,
       };
       setTasks(prev => [...prev, newTask]);
     } finally {
@@ -150,39 +157,39 @@ const ClarityListPage: React.FC = () => {
         task.id === id ? { 
           ...task, 
           description: newDescription,
-          dueDate: newDueDate ? newDueDate.toISOString().split('T')[0] : undefined
+          dueDate: newDueDate ? newDueDate.toISOString() : undefined
         } : task
       )
     );
     toast({ title: "Task Updated", description: "Your changes have been saved." });
   }, [toast]);
+  
+  const loadingState = (
+    <div className="space-y-8 max-w-2xl mx-auto">
+      <header className="text-center space-y-2">
+        <h1 className="text-4xl font-headline font-bold text-gray-800">Clarity List</h1>
+        <p className="text-muted-foreground">Your clean and intuitive to-do list.</p>
+      </header>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="font-headline">Add New Task</CardTitle>
+        </CardHeader>
+        <CardContent>
+           <div className="flex items-center justify-center h-24">
+              <Loader2 className="mr-2 h-6 w-6 animate-spin text-muted-foreground" />
+              <p className="text-muted-foreground">Loading form...</p>
+           </div>
+        </CardContent>
+      </Card>
+      <div className="text-center py-12 px-4 bg-background rounded-lg shadow-sm border border-dashed flex items-center justify-center">
+          <Loader2 className="mr-2 h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="text-muted-foreground">Loading tasks...</p>
+      </div>
+    </div>
+  );
 
   if (!hasMounted) {
-    return (
-       <div className="space-y-8 max-w-2xl mx-auto">
-        <header className="text-center space-y-2">
-          <h1 className="text-4xl font-headline font-bold text-gray-800">Clarity List</h1>
-          <p className="text-muted-foreground">Your clean and intuitive to-do list.</p>
-        </header>
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-headline">Add New Task</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <div className="flex items-center justify-center h-24">
-                <Loader2 className="mr-2 h-6 w-6 animate-spin text-muted-foreground" />
-                <p className="text-muted-foreground">Loading form...</p>
-             </div>
-          </CardContent>
-        </Card>
-        
-        <div className="text-center py-12 px-4 bg-background rounded-lg shadow-sm border border-dashed flex items-center justify-center">
-            <Loader2 className="mr-2 h-6 w-6 animate-spin text-muted-foreground" />
-            <p className="text-muted-foreground">Loading tasks...</p>
-        </div>
-      </div>
-    );
+    return loadingState;
   }
 
   return (
@@ -197,7 +204,7 @@ const ClarityListPage: React.FC = () => {
           <CardTitle className="font-headline">Add New Task</CardTitle>
         </CardHeader>
         <CardContent>
-           <AddTaskForm onAddTask={handleAddTask} isLoading={isAiLoading || !hasMounted} />
+           <AddTaskForm onAddTask={handleAddTask} isLoading={isAiLoading} />
         </CardContent>
       </Card>
       

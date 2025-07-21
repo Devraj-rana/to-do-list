@@ -3,7 +3,7 @@ export type Task = {
   description: string;
   completed: boolean;
   createdAt: string; // ISO string
-  dueDate?: string; // YYYY-MM-DD format
+  dueDate?: string; // ISO string
   estimatedTime?: number; // in minutes
   completedAt?: string; // ISO string
   completionTimeMinutes?: number; // duration in minutes
