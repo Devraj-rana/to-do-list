@@ -2,11 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Task } from '@/lib/types';
-import { estimateTaskCompletionTime } from '@/ai/flows/estimate-task-completion-time';
-import { warnOverloadedSchedule } from '@/ai/flows/warn-overloaded-schedule';
 import { useToast } from '@/hooks/use-toast';
 import { useHasMounted } from '@/hooks/use-has-mounted';
-import { format } from 'date-fns';
 
 import AddTaskForm from './add-task-form';
 import TaskList from './task-list';
@@ -15,7 +12,7 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 
 const ClarityListPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const hasMounted = useHasMounted();
 
@@ -57,27 +54,14 @@ const ClarityListPage: React.FC = () => {
   }, [tasks]);
 
   const handleAddTask = useCallback(async (description: string, dueDate?: Date) => {
-    setIsAiLoading(true);
+    setIsLoading(true);
     try {
-      const pastTasks = tasks
-        .filter(t => t.completed && t.completionTimeMinutes)
-        .map(t => ({
-          description: t.description,
-          completionTimeMinutes: t.completionTimeMinutes!,
-        }));
-
-      const { estimatedCompletionTimeMinutes } = await estimateTaskCompletionTime({
-        taskDescription: description,
-        pastTasks,
-      });
-      
       const newTask: Task = {
         id: crypto.randomUUID(),
         description,
         completed: false,
         createdAt: new Date().toISOString(),
         dueDate: dueDate ? dueDate.toISOString() : undefined,
-        estimatedTime: estimatedCompletionTimeMinutes,
       };
 
       const updatedTasks = [...tasks, newTask];
@@ -85,47 +69,18 @@ const ClarityListPage: React.FC = () => {
       
       toast({
         title: "Task Added",
-        description: `Estimated time: ${estimatedCompletionTimeMinutes} minutes.`,
+        description: "Your new task has been added to the list.",
       });
 
-      if (newTask.dueDate) {
-        const dueDateString = format(new Date(newTask.dueDate), 'yyyy-MM-dd');
-        const tasksForDueDate = updatedTasks.filter(t => t.dueDate && format(new Date(t.dueDate), 'yyyy-MM-dd') === dueDateString);
-        
-        const historicalCompletionTimes = tasks
-          .filter(t => t.completed && t.completionTimeMinutes)
-          .map(t => t.completionTimeMinutes!);
-
-        const { isOverloaded, warningMessage } = await warnOverloadedSchedule({
-          tasks: tasksForDueDate.map(t => ({ description: t.description, dueDate: format(new Date(t.dueDate!), 'yyyy-MM-dd') })),
-          historicalCompletionTimes,
-        });
-
-        if (isOverloaded) {
-          toast({
-            variant: "destructive",
-            title: "Schedule Alert",
-            description: warningMessage,
-          });
-        }
-      }
     } catch (error) {
-      console.error('AI operation failed', error);
+      console.error('Failed to add task', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Could not get AI-powered estimations. Task added with default values.',
+        description: 'Could not add the task. Please try again.',
       });
-       const newTask: Task = {
-        id: crypto.randomUUID(),
-        description,
-        completed: false,
-        createdAt: new Date().toISOString(),
-        dueDate: dueDate ? dueDate.toISOString() : undefined,
-      };
-      setTasks(prev => [...prev, newTask]);
     } finally {
-      setIsAiLoading(false);
+      setIsLoading(false);
     }
   }, [tasks, toast]);
 
@@ -204,7 +159,7 @@ const ClarityListPage: React.FC = () => {
           <CardTitle className="font-headline">Add New Task</CardTitle>
         </CardHeader>
         <CardContent>
-           <AddTaskForm onAddTask={handleAddTask} isLoading={isAiLoading} />
+           <AddTaskForm onAddTask={handleAddTask} isLoading={isLoading} />
         </CardContent>
       </Card>
       

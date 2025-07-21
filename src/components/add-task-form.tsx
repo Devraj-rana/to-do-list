@@ -114,7 +114,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, isLoading }) => {
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <Input type="time" {...field} disabled={isLoading || !form.watch('dueDate')} className="w-[120px]"/>
+                    <Input type="time" {...field} value={field.value ?? ""} disabled={isLoading || !form.watch('dueDate')} className="w-[120px]"/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

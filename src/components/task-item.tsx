@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { CalendarIcon, Clock, MoreVertical, Pencil, Save, Trash2, X } from 'lucide-react';
+import { CalendarIcon, MoreVertical, Pencil, Save, Trash2, X } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { Calendar } from './ui/calendar';
 
@@ -21,20 +21,20 @@ type TaskItemProps = {
   onUpdateTask: (id: string, newDescription: string, newDueDate?: Date) => void;
 };
 
-function formatDueDate(dateString: string) {
+function formatDueDate(dateString?: string): string {
+  if (!dateString) return '';
   const date = new Date(dateString);
-  // The 'hasTime' flag is set when a time is explicitly added.
-  if (taskHasTime(dateString)) {
+  const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0 || date.getMilliseconds() !== 0;
+
+  if (hasTime) {
     return format(date, "MMM d, yyyy 'at' h:mm a");
   }
   return format(date, "MMM d, yyyy");
 }
 
-function taskHasTime(dateString: string): boolean {
+function taskHasTime(dateString?: string): boolean {
+  if (!dateString) return false;
   const date = new Date(dateString);
-  // A common convention is to treat midnight as "no time specified" unless a time was explicitly set.
-  // We can check if time was set by looking at seconds/milliseconds if our inputs set them.
-  // A simpler approach is to check if it's exactly midnight.
   return date.getHours() !== 0 || date.getMinutes() !== 0;
 }
 
@@ -143,13 +143,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTas
                   <span>{formatDueDate(task.dueDate)}</span>
                 </div>
               )
-            )}
-            
-            {task.estimatedTime && (
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-3 w-3" />
-                <span>{task.estimatedTime} min</span>
-              </div>
             )}
           </div>
         </div>
