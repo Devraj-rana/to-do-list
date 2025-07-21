@@ -21,19 +21,29 @@ type TaskItemProps = {
   onUpdateTask: (id: string, newDescription: string, newDueDate?: Date) => void;
 };
 
-function formatTime(date: Date) {
-  // Check if time is set to midnight, which we treat as no time specified
-  if (date.getHours() === 0 && date.getMinutes() === 0) {
-    return format(date, "MMM d, yyyy");
+function formatDueDate(dateString: string) {
+  const date = new Date(dateString);
+  // The 'hasTime' flag is set when a time is explicitly added.
+  if (taskHasTime(dateString)) {
+    return format(date, "MMM d, yyyy 'at' h:mm a");
   }
-  return format(date, "MMM d, yyyy 'at' h:mm a");
+  return format(date, "MMM d, yyyy");
 }
+
+function taskHasTime(dateString: string): boolean {
+  const date = new Date(dateString);
+  // A common convention is to treat midnight as "no time specified" unless a time was explicitly set.
+  // We can check if time was set by looking at seconds/milliseconds if our inputs set them.
+  // A simpler approach is to check if it's exactly midnight.
+  return date.getHours() !== 0 || date.getMinutes() !== 0;
+}
+
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTask, onUpdateTask }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedDescription, setEditedDescription] = useState(task.description);
   const [editedDueDate, setEditedDueDate] = useState<Date | undefined>(task.dueDate ? new Date(task.dueDate) : undefined);
-  const [editedDueTime, setEditedDueTime] = useState<string>(task.dueDate ? format(new Date(task.dueDate), 'HH:mm') : '');
+  const [editedDueTime, setEditedDueTime] = useState<string>(task.dueDate && taskHasTime(task.dueDate) ? format(new Date(task.dueDate), 'HH:mm') : '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -52,6 +62,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTas
         if (editedDueTime) {
           const [hours, minutes] = editedDueTime.split(':').map(Number);
           combinedDate.setHours(hours, minutes);
+        } else {
+          // If time is cleared, set to midnight
+          combinedDate.setHours(0, 0, 0, 0);
         }
       }
       onUpdateTask(task.id, editedDescription, combinedDate);
@@ -62,7 +75,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTas
   const handleCancelEdit = () => {
     setEditedDescription(task.description);
     setEditedDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
-    setEditedDueTime(task.dueDate ? format(new Date(task.dueDate), 'HH:mm') : '');
+    setEditedDueTime(task.dueDate && taskHasTime(task.dueDate) ? format(new Date(task.dueDate), 'HH:mm') : '');
     setIsEditing(false);
   }
 
@@ -127,7 +140,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, onDeleteTas
               task.dueDate && (
                 <div className="flex items-center gap-1.5">
                   <CalendarIcon className="h-3 w-3" />
-                  <span>{formatTime(new Date(task.dueDate))}</span>
+                  <span>{formatDueDate(task.dueDate)}</span>
                 </div>
               )
             )}
