@@ -38,6 +38,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, isLoading }) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: "",
+      dueTime: "",
     },
   });
 
