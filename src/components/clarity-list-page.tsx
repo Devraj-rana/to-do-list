@@ -6,40 +6,41 @@ import type { Task } from '@/lib/types';
 import { estimateTaskCompletionTime } from '@/ai/flows/estimate-task-completion-time';
 import { warnOverloadedSchedule } from '@/ai/flows/warn-overloaded-schedule';
 import { useToast } from '@/hooks/use-toast';
+import { useHasMounted } from '@/hooks/use-has-mounted';
 
 import AddTaskForm from './add-task-form';
 import TaskList from './task-list';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 
 const ClarityListPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const { toast } = useToast();
+  const hasMounted = useHasMounted();
 
   useEffect(() => {
-    // This effect runs only on the client, after the initial render.
-    try {
-      const storedTasks = localStorage.getItem('clarity-list-tasks');
-      if (storedTasks) {
-        setTasks(JSON.parse(storedTasks));
+    if (hasMounted) {
+      try {
+        const storedTasks = localStorage.getItem('clarity-list-tasks');
+        if (storedTasks) {
+          setTasks(JSON.parse(storedTasks));
+        }
+      } catch (error) {
+        console.error('Failed to load tasks from localStorage', error);
       }
-    } catch (error) {
-      console.error('Failed to load tasks from localStorage', error);
-    } finally {
-      setIsLoading(false);
     }
-  }, []);
+  }, [hasMounted]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (hasMounted) {
       try {
         localStorage.setItem('clarity-list-tasks', JSON.stringify(tasks));
       } catch (error) {
         console.error('Failed to save tasks to localStorage', error);
       }
     }
-  }, [tasks, isLoading]);
+  }, [tasks, hasMounted]);
 
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
@@ -51,7 +52,7 @@ const ClarityListPage: React.FC = () => {
   }, [tasks]);
 
   const handleAddTask = useCallback(async (description: string, dueDate?: Date) => {
-    setIsLoading(true);
+    setIsAiLoading(true);
     try {
       const pastTasks = tasks
         .filter(t => t.completed && t.completionTimeMinutes)
@@ -117,7 +118,7 @@ const ClarityListPage: React.FC = () => {
       };
       setTasks(prev => [...prev, newTask]);
     } finally {
-      setIsLoading(false);
+      setIsAiLoading(false);
     }
   }, [tasks, toast]);
 
@@ -156,6 +157,31 @@ const ClarityListPage: React.FC = () => {
     toast({ title: "Task Updated", description: "Your changes have been saved." });
   }, [toast]);
 
+  if (!hasMounted) {
+    return (
+       <div className="space-y-8 max-w-2xl mx-auto">
+        <header className="text-center space-y-2">
+          <h1 className="text-4xl font-headline font-bold text-gray-800">Clarity List</h1>
+          <p className="text-muted-foreground">Your clean and intuitive to-do list.</p>
+        </header>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline">Add New Task</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <AddTaskForm onAddTask={handleAddTask} isLoading={true} />
+          </CardContent>
+        </Card>
+        
+        <div className="text-center py-12 px-4 bg-background rounded-lg shadow-sm border border-dashed flex items-center justify-center">
+            <Loader2 className="mr-2 h-6 w-6 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
       <header className="text-center space-y-2">
@@ -168,15 +194,11 @@ const ClarityListPage: React.FC = () => {
           <CardTitle className="font-headline">Add New Task</CardTitle>
         </CardHeader>
         <CardContent>
-          <AddTaskForm onAddTask={handleAddTask} isLoading={isLoading} />
+          <AddTaskForm onAddTask={handleAddTask} isLoading={isAiLoading} />
         </CardContent>
       </Card>
       
-      {isLoading ? (
-        <div className="text-center py-12 px-4 bg-background rounded-lg shadow-sm border border-dashed">
-            <p className="text-muted-foreground">Loading tasks...</p>
-        </div>
-      ) : sortedTasks.length > 0 ? (
+      {sortedTasks.length > 0 ? (
         <TaskList
           tasks={sortedTasks}
           onToggleComplete={handleToggleComplete}
