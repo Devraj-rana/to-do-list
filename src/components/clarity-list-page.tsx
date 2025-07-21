@@ -170,7 +170,10 @@ const ClarityListPage: React.FC = () => {
             <CardTitle className="font-headline">Add New Task</CardTitle>
           </CardHeader>
           <CardContent>
-             <AddTaskForm onAddTask={handleAddTask} isLoading={true} />
+             <div className="flex items-center justify-center h-24">
+                <Loader2 className="mr-2 h-6 w-6 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground">Loading form...</p>
+             </div>
           </CardContent>
         </Card>
         
@@ -194,7 +197,7 @@ const ClarityListPage: React.FC = () => {
           <CardTitle className="font-headline">Add New Task</CardTitle>
         </CardHeader>
         <CardContent>
-          <AddTaskForm onAddTask={handleAddTask} isLoading={isAiLoading} />
+           <AddTaskForm onAddTask={handleAddTask} isLoading={isAiLoading || !hasMounted} />
         </CardContent>
       </Card>
       
