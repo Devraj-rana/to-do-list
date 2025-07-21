@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -17,6 +18,7 @@ const ClarityListPage: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    // This effect runs only on the client, after the initial render.
     try {
       const storedTasks = localStorage.getItem('clarity-list-tasks');
       if (storedTasks) {
@@ -30,12 +32,14 @@ const ClarityListPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('clarity-list-tasks', JSON.stringify(tasks));
-    } catch (error) {
-      console.error('Failed to save tasks to localStorage', error);
+    if (!isLoading) {
+      try {
+        localStorage.setItem('clarity-list-tasks', JSON.stringify(tasks));
+      } catch (error) {
+        console.error('Failed to save tasks to localStorage', error);
+      }
     }
-  }, [tasks]);
+  }, [tasks, isLoading]);
 
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
@@ -168,7 +172,11 @@ const ClarityListPage: React.FC = () => {
         </CardContent>
       </Card>
       
-      {sortedTasks.length > 0 ? (
+      {isLoading ? (
+        <div className="text-center py-12 px-4 bg-background rounded-lg shadow-sm border border-dashed">
+            <p className="text-muted-foreground">Loading tasks...</p>
+        </div>
+      ) : sortedTasks.length > 0 ? (
         <TaskList
           tasks={sortedTasks}
           onToggleComplete={handleToggleComplete}
